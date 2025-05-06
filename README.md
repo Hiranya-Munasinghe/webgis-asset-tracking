@@ -97,7 +97,7 @@ Backend will start at: [http://localhost:5000](http://localhost:5000)
 
 ---
 
-### 4️⃣ Enjoy!
+### 4️⃣ Output!
 
 - You’ll see a map with live-updating asset markers.
 - Click a marker to see its popup.
@@ -105,6 +105,4 @@ Backend will start at: [http://localhost:5000](http://localhost:5000)
 - Every 5 seconds, locations will randomly shift and refresh.
 
 ---
-
-## 📂 Project Structure
 
