@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebGIS Asset Tracking</title>
+    <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css">
+    <style>
+        html, body, #map {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .ol-popup {
+            position: absolute;
+            background-color: white;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #ffffff;
+            bottom: 12px;
+            left: -50px;
+            min-width: 150px;
+        }
+        .ol-popup:after, .ol-popup:before {
+            top: 100%;
+            border: solid transparent;
+            content: "";
+            height: 0;
+            width: 0;
+            position: absolute;
+            pointer-events: none;
+        }
+        .ol-popup:after {
+            border-top-color: rgb(255, 254, 254);
+            border-width: 10px;
+            left: 50%;
+            margin-left: -10px;
+        }
+        .ol-popup:before {
+            border-top-color: #fffdfd;
+            border-width: 11px;
+            left: 50%;
+            margin-left: -11px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="popup" class="ol-popup">
+        <div id="popup-content"></div>
+    </div>
+    <script>
+        const map = new ol.Map({
+            target: 'map',
+            layers: [ new ol.layer.Tile({ source: new ol.source.OSM() }) ],
+            view: new ol.View({
+                center: ol.proj.fromLonLat([79.8612, 6.9271]),
+                zoom: 15
+            })
+        });
+
+        const vectorSource = new ol.source.Vector();
+        const vectorLayer = new ol.layer.Vector({ source: vectorSource });
+        map.addLayer(vectorLayer);
+
+        const container = document.getElementById('popup');
+        const content = document.getElementById('popup-content');
+        const overlay = new ol.Overlay({
+            element: container,
+            autoPan: true,
+            autoPanAnimation: { duration: 250 }
+        });
+        map.addOverlay(overlay);
+
+        // Hide popup when clicking outside
+        map.on('click', function(event) {
+            overlay.setPosition(undefined);
+        });
+
+        // Show popup on feature click
+        map.on('singleclick', function(event) {
+            map.forEachFeatureAtPixel(event.pixel, function(feature) {
+                const coordinates = feature.getGeometry().getCoordinates();
+                const name = feature.get('name');
+                const status = feature.get('status');
+                content.innerHTML = `<strong>${name}</strong><br>Status: ${status}`;
+                overlay.setPosition(coordinates);
+            });
+        });
+
+        function loadAssets() {
+            fetch('http://localhost:5000/assets')
+                .then(response => response.json())
+                .then(data => {
+                    vectorSource.clear();
+                    const features = new ol.format.GeoJSON().readFeatures(data, {
+                        featureProjection: 'EPSG:3857'
+                    });
+
+                    features.forEach(feature => {
+                        feature.setStyle(new ol.style.Style({
+                            image: new ol.style.Circle({
+                                radius: 7,
+                                fill: new ol.style.Fill({ color: 'blue' }),
+                                stroke: new ol.style.Stroke({ color: 'black', width: 1 })
+                            }),
+                            text: new ol.style.Text({
+                                text: feature.get('name'),
+                                offsetY: -15,
+                                fill: new ol.style.Fill({ color: 'black' }),
+                                stroke: new ol.style.Stroke({ color: 'black', width: 1 })
+                            })
+                        }));
+                    });
+
+                    vectorSource.addFeatures(features);
+                })
+                .catch(error => console.error('Error loading assets:', error));
+        }
+
+        function updateAssets() {
+            fetch('http://localhost:5000/update')
+                .then(() => loadAssets())
+                .catch(error => console.error('Error updating assets:', error));
+        }
+
+        loadAssets();
+        setInterval(updateAssets, 5000);
+    </script>
+</body>
+</html>
+
